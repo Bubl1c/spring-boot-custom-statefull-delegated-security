@@ -1,4 +1,4 @@
-package com.amozh.controller;
+package com.amozh.businesslogic;
 
 /**
  * Created by Andrii on 19.10.2015.

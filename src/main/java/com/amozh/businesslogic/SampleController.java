@@ -1,8 +1,7 @@
-package com.amozh.controller;
+package com.amozh.businesslogic;
 
 import com.amozh.auth.CurrentlyLoggedUser;
 import com.amozh.auth.DomainUser;
-import com.amozh.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;

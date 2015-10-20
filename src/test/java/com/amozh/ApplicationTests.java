@@ -1,9 +1,9 @@
 package com.amozh;
 
-import com.amozh.controller.ApiController;
-import com.amozh.external.AuthenticatedExternalWebService;
+import com.amozh.auth.AuthenticationWithToken;
+import com.amozh.businesslogic.ApiController;
 import com.amozh.external.ExternalServiceAuthenticator;
-import com.amozh.service.SampleService;
+import com.amozh.businesslogic.SampleService;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.ValidatableResponse;
 import org.junit.Before;
@@ -44,11 +44,11 @@ public class ApplicationTests {
 	@Value("${local.server.port}")
 	int port;
 
-	@Value("${keystore.file}")
-	String keystoreFile;
-
-	@Value("${keystore.pass}")
-	String keystorePass;
+//	@Value("${keystore.file}")
+//	String keystoreFile;
+//
+//	@Value("${keystore.pass}")
+//	String keystorePass;
 
 	@Autowired
 	ExternalServiceAuthenticator mockedExternalServiceAuthenticator;
@@ -73,7 +73,7 @@ public class ApplicationTests {
 	@Before
 	public void setup() {
 		RestAssured.baseURI = "https://localhost";
-		RestAssured.keystore(keystoreFile, keystorePass);
+//		RestAssured.keystore(keystoreFile, keystorePass);
 		RestAssured.port = port;
 		Mockito.reset(mockedExternalServiceAuthenticator, mockedSampleService);
 	}
@@ -178,7 +178,7 @@ public class ApplicationTests {
 		String username = "test_user_2";
 		String password = "ValidPassword";
 
-		AuthenticatedExternalWebService authenticationWithToken = new AuthenticatedExternalWebService(username, null,
+		AuthenticationWithToken authenticationWithToken = new AuthenticationWithToken(username, null,
 				AuthorityUtils.commaSeparatedStringToAuthorityList("ROLE_DOMAIN_USER"));
 		BDDMockito.when(mockedExternalServiceAuthenticator.authenticate(eq(username), eq(password))).
 				thenReturn(authenticationWithToken);

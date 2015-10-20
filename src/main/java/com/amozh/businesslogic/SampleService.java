@@ -1,4 +1,4 @@
-package com.amozh.service;
+package com.amozh.businesslogic;
 
 import com.amozh.auth.DomainUser;
 import org.springframework.stereotype.Service;

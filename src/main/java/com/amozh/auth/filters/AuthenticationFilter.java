@@ -1,7 +1,7 @@
 package com.amozh.auth.filters;
 
 import com.amozh.auth.TokenResponse;
-import com.amozh.controller.ApiController;
+import com.amozh.businesslogic.ApiController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;

@@ -1,7 +1,7 @@
 package com.amozh.auth.filters;
 
 import com.amozh.auth.admin.BackendAdminUsernamePasswordAuthenticationToken;
-import com.amozh.controller.ApiController;
+import com.amozh.businesslogic.ApiController;
 import com.google.common.base.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

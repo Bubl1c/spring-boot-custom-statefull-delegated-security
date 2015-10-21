@@ -4,6 +4,7 @@ import com.amozh.auth.admin.BackendAdminUsernamePasswordAuthenticationProvider;
 import com.amozh.auth.filters.ManagementEndpointAuthenticationFilter;
 import com.amozh.auth.filters.AuthenticationFilter;
 import com.amozh.auth.user.UsernamePasswordAuthenticationProvider;
+import com.amozh.businesslogic.ApiController;
 import com.amozh.external.ExternalServiceAuthenticator;
 import com.amozh.external.SomeExternalServiceAuthenticator;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -39,13 +41,19 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 csrf().disable().
                 sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).
                 and().
-                authorizeRequests().anyRequest().authenticated().
+                authorizeRequests().
+                anyRequest().authenticated().
                 and().
                 anonymous().disable().
                 exceptionHandling().authenticationEntryPoint(unauthorizedEntryPoint());
 
         http.addFilterBefore(new AuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class).
                 addFilterBefore(new ManagementEndpointAuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class);
+    }
+
+    @Override
+    public void configure(WebSecurity web) throws Exception {
+        web.ignoring().antMatchers("/public/*", ApiController.FREE_URL);
     }
 
     @Override

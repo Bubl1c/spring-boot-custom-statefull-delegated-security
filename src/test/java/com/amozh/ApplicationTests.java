@@ -80,13 +80,14 @@ public class ApplicationTests {
 
 	@Test
 	public void freeEndpoint_availableForEveryone() {
-		when().get("/free").
-				then().statusCode(HttpStatus.OK.value()).toString().equals("Free!");
+		ValidatableResponse r = when().get(ApiController.FREE_URL).then();
+		System.out.println("freeEndpoint_availableForEveryone " + r.extract().statusCode());
+		r.statusCode(HttpStatus.OK.value()).toString().equals("Free!");
 	}
 
 	@Test
 	public void authenticate_withoutPassword_unauthorized() {
-		given().header(X_AUTH_USERNAME, "SomeUser").
+		given().header(X_AUTH_USERNAME, "user").
 				when().post(ApiController.AUTHENTICATE_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
 
@@ -94,7 +95,7 @@ public class ApplicationTests {
 	}
 
 	@Test
-	public void authenticate_InvalidUsernamePassword_ok() {
+	public void authenticate_InvalidUsernamePassword_unauthorized() {
 		String username = "user";
 		String password = "InvalidPassword";
 		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
@@ -146,7 +147,7 @@ public class ApplicationTests {
 
 	@Test
 	public void authenticate_withInvalidUsernameOrPassword_returnsUnauthorized() {
-		String username = "test_user_2";
+		String username = "user";
 		String password = "InvalidPassword";
 
 		BDDMockito.when(mockedExternalServiceAuthenticator.authenticate(anyString(), anyString())).
@@ -158,20 +159,20 @@ public class ApplicationTests {
 	}
 
 	@Test
-	public void gettingStuff_withoutToken_returnsUnauthorized() {
+	public void hello_withoutToken_unauthorized() {
 		when().get(ApiController.HELLO_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
 	}
 
 	@Test
-	public void gettingStuff_withInvalidToken_returnsUnathorized() {
+	public void hello_InvalidToken_unathorized() {
 		given().header(X_AUTH_TOKEN, "InvalidToken").
 				when().get(ApiController.HELLO_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
 	}
 
 	@Test
-	public void gettingStuff_withValidToken_returnsData() {
+	public void hello_ValidToken_returnsData() {
 		String generatedToken = authenticateByUsernameAndPasswordAndGetToken();
 
 		given().header(X_AUTH_TOKEN, generatedToken).
@@ -180,8 +181,8 @@ public class ApplicationTests {
 	}
 
 	private String authenticateByUsernameAndPasswordAndGetToken() {
-		String username = "test_user_2";
-		String password = "ValidPassword";
+		String username = "user";
+		String password = "password";
 
 		AuthenticationWithToken authenticationWithToken = new AuthenticationWithToken(username, null,
 				AuthorityUtils.commaSeparatedStringToAuthorityList("ROLE_DOMAIN_USER"));

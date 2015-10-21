@@ -3,7 +3,7 @@ package com.amozh.auth;
 import com.amozh.auth.admin.BackendAdminUsernamePasswordAuthenticationProvider;
 import com.amozh.auth.filters.ManagementEndpointAuthenticationFilter;
 import com.amozh.auth.filters.AuthenticationFilter;
-import com.amozh.auth.user.DomainUsernamePasswordAuthenticationProvider;
+import com.amozh.auth.user.UsernamePasswordAuthenticationProvider;
 import com.amozh.external.ExternalServiceAuthenticator;
 import com.amozh.external.SomeExternalServiceAuthenticator;
 import org.springframework.beans.factory.annotation.Value;
@@ -67,7 +67,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public AuthenticationProvider domainUsernamePasswordAuthenticationProvider() {
-        return new DomainUsernamePasswordAuthenticationProvider(tokenService(), someExternalServiceAuthenticator());
+        return new UsernamePasswordAuthenticationProvider(tokenService(), someExternalServiceAuthenticator());
     }
 
     @Bean

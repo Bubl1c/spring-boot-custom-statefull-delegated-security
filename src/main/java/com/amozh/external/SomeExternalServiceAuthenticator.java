@@ -2,12 +2,15 @@ package com.amozh.external;
 
 import com.amozh.auth.AuthenticationWithToken;
 import com.amozh.auth.DomainUser;
+import com.amozh.auth.TokenService;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.AuthorityUtils;
-
 /**
  * Created by Andrii on 19.10.2015.
  */
 public class SomeExternalServiceAuthenticator implements ExternalServiceAuthenticator {
+
+    TokenService tokenService;
 
     @Override
     public AuthenticationWithToken authenticate(String username, String password) {
@@ -23,11 +26,23 @@ public class SomeExternalServiceAuthenticator implements ExternalServiceAuthenti
         // with proper Principal and GrantedAuthorities.
         // GrantedAuthorities may come from external service authentication or be hardcoded at our layer
         // as they are here with ROLE_DOMAIN_USER
-        AuthenticationWithToken authenticationWithToken =
-                new AuthenticationWithToken(
-                        new DomainUser(username),
-                        null,
-                        AuthorityUtils.commaSeparatedStringToAuthorityList("ROLE_DOMAIN_USER"));
+
+        String validUsername = "user";
+        String validPassword = "password";
+
+        AuthenticationWithToken authenticationWithToken;
+
+        if(username.equalsIgnoreCase(validUsername) && password.equals(validPassword)) {
+            authenticationWithToken =
+                    new AuthenticationWithToken(
+                            new DomainUser(username),
+                            null,
+                            AuthorityUtils.commaSeparatedStringToAuthorityList("ROLE_DOMAIN_USER"));
+            String newToken = tokenService.generateNewToken();
+            authenticationWithToken.setToken(newToken);
+        } else {
+            throw new ExternalServiceAuthenticationException("Invalid credentials!");
+        }
 
         return authenticationWithToken;
     }

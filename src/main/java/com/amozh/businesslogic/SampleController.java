@@ -23,6 +23,7 @@ public class SampleController implements ApiController{
     }
 
     @RequestMapping(value = FREE_URL, method = RequestMethod.GET)
-    public void free(@CurrentlyLoggedUser DomainUser domainUser) {
+    public String free(@CurrentlyLoggedUser DomainUser domainUser) {
+        return "Free!";
     }
 }

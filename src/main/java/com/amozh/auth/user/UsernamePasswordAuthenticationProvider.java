@@ -14,12 +14,12 @@ import org.springframework.security.core.AuthenticationException;
  * Created by Andrii on 19.10.2015.
  */
 
-public class DomainUsernamePasswordAuthenticationProvider implements AuthenticationProvider {
+public class UsernamePasswordAuthenticationProvider implements AuthenticationProvider {
 
     private TokenService tokenService;
     private ExternalServiceAuthenticator externalServiceAuthenticator;
 
-    public DomainUsernamePasswordAuthenticationProvider(TokenService tokenService, ExternalServiceAuthenticator externalServiceAuthenticator) {
+    public UsernamePasswordAuthenticationProvider(TokenService tokenService, ExternalServiceAuthenticator externalServiceAuthenticator) {
         this.tokenService = tokenService;
         this.externalServiceAuthenticator = externalServiceAuthenticator;
     }
@@ -34,9 +34,7 @@ public class DomainUsernamePasswordAuthenticationProvider implements Authenticat
         }
 
         AuthenticationWithToken resultOfAuthentication = externalServiceAuthenticator.authenticate(username.get(), password.get());
-        String newToken = tokenService.generateNewToken();
-        resultOfAuthentication.setToken(newToken);
-        tokenService.store(newToken, resultOfAuthentication);
+        tokenService.store(resultOfAuthentication.getToken(), resultOfAuthentication);
 
         return resultOfAuthentication;
     }

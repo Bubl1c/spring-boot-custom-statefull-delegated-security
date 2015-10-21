@@ -72,44 +72,20 @@ public class ApplicationTests {
 
 	@Before
 	public void setup() {
-		RestAssured.baseURI = "https://localhost";
+		RestAssured.baseURI = "http://localhost";
 //		RestAssured.keystore(keystoreFile, keystorePass);
 		RestAssured.port = port;
 		Mockito.reset(mockedExternalServiceAuthenticator, mockedSampleService);
 	}
 
 	@Test
-	public void healthEndpoint_isAvailableToEveryone() {
-		when().get("/health").
-				then().statusCode(HttpStatus.OK.value()).body("status", equalTo("UP"));
+	public void freeEndpoint_availableForEveryone() {
+		when().get("/free").
+				then().statusCode(HttpStatus.OK.value()).toString().equals("Free!");
 	}
 
 	@Test
-	public void metricsEndpoint_withoutBackendAdminCredentials_returnsUnauthorized() {
-		when().get("/metrics").
-				then().statusCode(HttpStatus.UNAUTHORIZED.value());
-	}
-
-	@Test
-	public void metricsEndpoint_withInvalidBackendAdminCredentials_returnsUnauthorized() {
-		String username = "test_user_2";
-		String password = "InvalidPassword";
-		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
-				when().get("/metrics").
-				then().statusCode(HttpStatus.UNAUTHORIZED.value());
-	}
-
-	@Test
-	public void metricsEndpoint_withCorrectBackendAdminCredentials_returnsOk() {
-		String username = "backend_admin";
-		String password = "remember_to_change_me_by_external_property_on_deploy";
-		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
-				when().get("/metrics").
-				then().statusCode(HttpStatus.OK.value());
-	}
-
-	@Test
-	public void authenticate_withoutPassword_returnsUnauthorized() {
+	public void authenticate_withoutPassword_unauthorized() {
 		given().header(X_AUTH_USERNAME, "SomeUser").
 				when().post(ApiController.AUTHENTICATE_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
@@ -118,8 +94,10 @@ public class ApplicationTests {
 	}
 
 	@Test
-	public void authenticate_withoutUsername_returnsUnauthorized() {
-		given().header(X_AUTH_PASSWORD, "SomePassword").
+	public void authenticate_InvalidUsernamePassword_ok() {
+		String username = "user";
+		String password = "InvalidPassword";
+		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
 				when().post(ApiController.AUTHENTICATE_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
 
@@ -127,11 +105,38 @@ public class ApplicationTests {
 	}
 
 	@Test
-	public void authenticate_withoutUsernameAndPassword_returnsUnauthorized() {
-		when().post(ApiController.AUTHENTICATE_URL).
-				then().statusCode(HttpStatus.UNAUTHORIZED.value());
+	public void authenticate_ValidUsernamePassword_ok() {
+		String username = "user";
+		String password = "password";
+		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
+				when().post(ApiController.AUTHENTICATE_URL).
+				then().statusCode(HttpStatus.OK.value());
 
 		BDDMockito.verifyNoMoreInteractions(mockedExternalServiceAuthenticator);
+	}
+
+	@Test
+	public void helloEndpoint_unauthorized() {
+		when().get("/hello").
+				then().statusCode(HttpStatus.UNAUTHORIZED.value());
+	}
+
+	@Test
+	public void helloEndpoint_withInvalidCredentials_unauthorized() {
+		String username = "user";
+		String password = "InvalidPassword";
+		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
+				when().get("/hello").
+				then().statusCode(HttpStatus.UNAUTHORIZED.value());
+	}
+
+	@Test
+	public void helloEndpoint_withValidCredentials_ok() {
+		String username = "user";
+		String password = "password";
+		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
+				when().get("/hello").
+				then().statusCode(HttpStatus.OK.value());
 	}
 
 	@Test

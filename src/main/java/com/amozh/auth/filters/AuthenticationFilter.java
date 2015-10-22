@@ -1,5 +1,6 @@
 package com.amozh.auth.filters;
 
+import com.amozh.auth.AuthHeaders;
 import com.amozh.auth.TokenResponse;
 import com.amozh.businesslogic.ApiController;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,21 +44,21 @@ public class AuthenticationFilter extends GenericFilterBean {
         HttpServletRequest httpRequest = asHttp(request);
         HttpServletResponse httpResponse = asHttp(response);
 
-        Optional<String> username = Optional.fromNullable(httpRequest.getHeader("X-Auth-Username"));
-        Optional<String> password = Optional.fromNullable(httpRequest.getHeader("X-Auth-Password"));
-        Optional<String> token = Optional.fromNullable(httpRequest.getHeader("X-Auth-Token"));
+        Optional<String> username = Optional.fromNullable(httpRequest.getHeader(AuthHeaders.USERNAME));
+        Optional<String> password = Optional.fromNullable(httpRequest.getHeader(AuthHeaders.PASSWORD));
+        Optional<String> token = Optional.fromNullable(httpRequest.getHeader(AuthHeaders.TOKEN));
 
         String resourcePath = new UrlPathHelper().getPathWithinApplication(httpRequest);
 
         try {
             if (postToAuthenticate(httpRequest, resourcePath)) {
-                logger.debug("Trying to authenticate user {} by X-Auth-Username method", username);
+                logger.debug("Trying to authenticate user {} by "+AuthHeaders.USERNAME+" method", username);
                 processUsernamePasswordAuthentication(httpResponse, username, password);
                 return;
             }
 
             if (token.isPresent()) {
-                logger.debug("Trying to authenticate user by X-Auth-Token method. Token: {}", token);
+                logger.debug("Trying to authenticate user by "+AuthHeaders.TOKEN+" method. Token: {}", token);
                 processTokenAuthentication(token);
             }
 

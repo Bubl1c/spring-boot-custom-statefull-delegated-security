@@ -1,9 +1,9 @@
 package com.amozh.auth;
 
-import com.amozh.auth.admin.BackendAdminUsernamePasswordAuthenticationProvider;
-import com.amozh.auth.filters.ManagementEndpointAuthenticationFilter;
+import com.amozh.auth.providers.WorkerTokenAuthenticationProvider;
+import com.amozh.auth.filters.WorkerAuthenticationFilter;
 import com.amozh.auth.filters.AuthenticationFilter;
-import com.amozh.auth.user.UsernamePasswordAuthenticationProvider;
+import com.amozh.auth.providers.UsernamePasswordAuthenticationProvider;
 import com.amozh.businesslogic.ApiController;
 import com.amozh.external.ExternalServiceAuthenticator;
 import com.amozh.external.SomeExternalServiceAuthenticator;
@@ -48,12 +48,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 exceptionHandling().authenticationEntryPoint(unauthorizedEntryPoint());
 
         http.addFilterBefore(new AuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class).
-                addFilterBefore(new ManagementEndpointAuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class);
+                addFilterBefore(new WorkerAuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class);
     }
 
     @Override
     public void configure(WebSecurity web) throws Exception {
-        web.ignoring().antMatchers("/public/*", ApiController.FREE_URL);
+        web.ignoring().antMatchers("/index.html", ApiController.FREE_URL);
     }
 
     @Override
@@ -80,7 +80,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public AuthenticationProvider backendAdminUsernamePasswordAuthenticationProvider() {
-        return new BackendAdminUsernamePasswordAuthenticationProvider();
+        return new WorkerTokenAuthenticationProvider();
     }
 
     @Bean

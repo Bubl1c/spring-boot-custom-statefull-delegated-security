@@ -1,6 +1,7 @@
 package com.amozh.auth.filters;
 
-import com.amozh.auth.admin.BackendAdminUsernamePasswordAuthenticationToken;
+import com.amozh.auth.AuthHeaders;
+import com.amozh.auth.AuthenticationWithToken;
 import com.amozh.businesslogic.ApiController;
 import com.google.common.base.Optional;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.springframework.security.authentication.InternalAuthenticationService
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.preauth.PreAuthenticatedCredentialsNotFoundException;
 import org.springframework.web.filter.GenericFilterBean;
 import org.springframework.web.util.UrlPathHelper;
 
@@ -23,20 +25,20 @@ import java.util.Set;
 /**
  * Created by Andrii on 19.10.2015.
  */
-public class ManagementEndpointAuthenticationFilter extends GenericFilterBean {
+public class WorkerAuthenticationFilter extends GenericFilterBean {
 
-    private final static Logger logger = LoggerFactory.getLogger(ManagementEndpointAuthenticationFilter.class);
+    private final static Logger logger = LoggerFactory.getLogger(WorkerAuthenticationFilter.class);
     private AuthenticationManager authenticationManager;
-    private Set<String> managementEndpoints;
+    private Set<String> workerEndpoints;
 
-    public ManagementEndpointAuthenticationFilter(AuthenticationManager authenticationManager) {
+    public WorkerAuthenticationFilter(AuthenticationManager authenticationManager) {
         this.authenticationManager = authenticationManager;
         prepareManagementEndpointsSet();
     }
 
     private void prepareManagementEndpointsSet() {
-        managementEndpoints = new HashSet<>();
-        managementEndpoints.add(ApiController.MANAGEMENT_HELLO);
+        workerEndpoints = new HashSet<>();
+        workerEndpoints.add(ApiController.WORKER_HELLO_URL);
     }
 
     @Override
@@ -44,18 +46,20 @@ public class ManagementEndpointAuthenticationFilter extends GenericFilterBean {
         HttpServletRequest httpRequest = asHttp(request);
         HttpServletResponse httpResponse = asHttp(response);
 
-        Optional<String> username = Optional.fromNullable(httpRequest.getHeader("X-Auth-Username"));
-        Optional<String> password = Optional.fromNullable(httpRequest.getHeader("X-Auth-Password"));
+        Optional<String> token = Optional.fromNullable(httpRequest.getHeader(AuthHeaders.TOKEN));
 
         String resourcePath = new UrlPathHelper().getPathWithinApplication(httpRequest);
 
         try {
-            if (postToManagementEndpoints(resourcePath)) {
-                logger.debug("Trying to authenticate user {} for management endpoint by X-Auth-Username method", username);
-                processManagementEndpointUsernamePasswordAuthentication(username, password);
+            if(postToWorkerEndpoints(resourcePath)) {
+                if(!token.isPresent()) {
+                    throw new PreAuthenticatedCredentialsNotFoundException("Token not found");
+                }
+                logger.debug("Trying to authenticate worker {} for worker endpoint by token", token);
+                processWorkerEndpointTokenAuthentication(token.get());
             }
 
-            logger.debug("ManagementEndpointAuthenticationFilter is passing request down the filter chain");
+            logger.debug("WorkerAuthenticationFilter is passing request down the filter chain");
             chain.doFilter(request, response);
         } catch (AuthenticationException authenticationException) {
             SecurityContextHolder.clearContext();
@@ -71,26 +75,26 @@ public class ManagementEndpointAuthenticationFilter extends GenericFilterBean {
         return (HttpServletResponse) response;
     }
 
-    private boolean postToManagementEndpoints(String resourcePath) {
-        return managementEndpoints.contains(resourcePath);
+    private boolean postToWorkerEndpoints(String resourcePath) {
+        return workerEndpoints.contains(resourcePath);
     }
 
-    private void processManagementEndpointUsernamePasswordAuthentication(Optional<String> username, Optional<String> password) throws IOException {
-        Authentication resultOfAuthentication = tryToAuthenticateWithUsernameAndPassword(username, password);
+    private void processWorkerEndpointTokenAuthentication(String token) throws IOException {
+        Authentication resultOfAuthentication = tryToAuthenticateWithToken(token);
         SecurityContextHolder.getContext().setAuthentication(resultOfAuthentication);
     }
 
-    private Authentication tryToAuthenticateWithUsernameAndPassword(Optional<String> username, Optional<String> password) {
-        BackendAdminUsernamePasswordAuthenticationToken requestAuthentication = new BackendAdminUsernamePasswordAuthenticationToken(username, password);
+    private Authentication tryToAuthenticateWithToken(String token) {
+        AuthenticationWithToken requestAuthentication = new AuthenticationWithToken(token, null);
         return tryToAuthenticate(requestAuthentication);
     }
 
     private Authentication tryToAuthenticate(Authentication requestAuthentication) {
         Authentication responseAuthentication = authenticationManager.authenticate(requestAuthentication);
         if (responseAuthentication == null || !responseAuthentication.isAuthenticated()) {
-            throw new InternalAuthenticationServiceException("Unable to authenticate Backend Admin for provided credentials");
+            throw new InternalAuthenticationServiceException("Unable to authenticate Worker for provided token.");
         }
-        logger.debug("Backend Admin successfully authenticated");
+        logger.debug("Worker successfully authenticated");
         return responseAuthentication;
     }
 }

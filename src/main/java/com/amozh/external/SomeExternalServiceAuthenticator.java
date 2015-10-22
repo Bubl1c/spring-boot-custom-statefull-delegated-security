@@ -2,6 +2,7 @@ package com.amozh.external;
 
 import com.amozh.auth.AuthenticationWithToken;
 import com.amozh.auth.DomainUser;
+import com.amozh.auth.SecurityRoles;
 import com.amozh.auth.TokenService;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -11,6 +12,10 @@ import org.springframework.security.core.authority.AuthorityUtils;
 public class SomeExternalServiceAuthenticator implements ExternalServiceAuthenticator {
 
     TokenService tokenService;
+
+    public SomeExternalServiceAuthenticator() {
+        this.tokenService = new TokenService();
+    }
 
     @Override
     public AuthenticationWithToken authenticate(String username, String password) {
@@ -27,23 +32,26 @@ public class SomeExternalServiceAuthenticator implements ExternalServiceAuthenti
         // GrantedAuthorities may come from external service authentication or be hardcoded at our layer
         // as they are here with ROLE_DOMAIN_USER
 
-        String validUsername = "user";
-        String validPassword = "password";
+        if(!isValidCredentials(username, password)){
+            throw new ExternalServiceAuthenticationException("Invalid user credentials!");
+        }
 
-        AuthenticationWithToken authenticationWithToken;
-
-        if(username.equalsIgnoreCase(validUsername) && password.equals(validPassword)) {
-            authenticationWithToken =
+        AuthenticationWithToken authenticationWithToken =
                     new AuthenticationWithToken(
                             new DomainUser(username),
                             null,
-                            AuthorityUtils.commaSeparatedStringToAuthorityList("ROLE_DOMAIN_USER"));
-            String newToken = tokenService.generateNewToken();
-            authenticationWithToken.setToken(newToken);
-        } else {
-            throw new ExternalServiceAuthenticationException("Invalid credentials!");
-        }
+                            AuthorityUtils.commaSeparatedStringToAuthorityList(SecurityRoles.ROLE_USER.toString()));
+
+        String newToken = /*tokenService.generateNewToken()*/ username + password;
+        authenticationWithToken.setToken(newToken);
 
         return authenticationWithToken;
     }
+
+    private boolean isValidCredentials(String username, String password) {
+        String validUsername = "user";
+        String validPassword = "password";
+        return username.equalsIgnoreCase(validUsername) && password.equals(validPassword);
+    }
+
 }

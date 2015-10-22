@@ -1,11 +1,15 @@
 package com.amozh;
 
 import com.amozh.auth.AuthenticationWithToken;
+import com.amozh.auth.DomainUser;
+import com.amozh.auth.SecurityRoles;
 import com.amozh.businesslogic.ApiController;
 import com.amozh.external.ExternalServiceAuthenticator;
 import com.amozh.businesslogic.SampleService;
+import com.amozh.external.SomeExternalServiceAuthenticator;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.ValidatableResponse;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,6 +27,8 @@ import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import javax.validation.constraints.AssertTrue;
 
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
@@ -60,7 +66,8 @@ public class ApplicationTests {
 	public static class SecurityTestConfig {
 		@Bean
 		public ExternalServiceAuthenticator someExternalServiceAuthenticator() {
-			return mock(ExternalServiceAuthenticator.class);
+//			return mock(ExternalServiceAuthenticator.class);
+			return new SomeExternalServiceAuthenticator();
 		}
 
 		@Bean
@@ -75,7 +82,7 @@ public class ApplicationTests {
 		RestAssured.baseURI = "http://localhost";
 //		RestAssured.keystore(keystoreFile, keystorePass);
 		RestAssured.port = port;
-		Mockito.reset(mockedExternalServiceAuthenticator, mockedSampleService);
+//		Mockito.reset(mockedExternalServiceAuthenticator, mockedSampleService);
 	}
 
 	@Test
@@ -90,8 +97,6 @@ public class ApplicationTests {
 		given().header(X_AUTH_USERNAME, "user").
 				when().post(ApiController.AUTHENTICATE_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
-
-		BDDMockito.verifyNoMoreInteractions(mockedExternalServiceAuthenticator);
 	}
 
 	@Test
@@ -101,8 +106,6 @@ public class ApplicationTests {
 		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
 				when().post(ApiController.AUTHENTICATE_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
-
-		BDDMockito.verifyNoMoreInteractions(mockedExternalServiceAuthenticator);
 	}
 
 	@Test
@@ -112,8 +115,6 @@ public class ApplicationTests {
 		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
 				when().post(ApiController.AUTHENTICATE_URL).
 				then().statusCode(HttpStatus.OK.value());
-
-		BDDMockito.verifyNoMoreInteractions(mockedExternalServiceAuthenticator);
 	}
 
 	@Test
@@ -127,7 +128,7 @@ public class ApplicationTests {
 		String username = "user";
 		String password = "InvalidPassword";
 		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
-				when().get("/hello").
+				when().get(ApiController.HELLO_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
 	}
 
@@ -136,7 +137,7 @@ public class ApplicationTests {
 		String username = "user";
 		String password = "password";
 		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
-				when().get("/hello").
+				when().get(ApiController.HELLO_URL).
 				then().statusCode(HttpStatus.OK.value());
 	}
 
@@ -184,10 +185,11 @@ public class ApplicationTests {
 		String username = "user";
 		String password = "password";
 
-		AuthenticationWithToken authenticationWithToken = new AuthenticationWithToken(username, null,
-				AuthorityUtils.commaSeparatedStringToAuthorityList("ROLE_DOMAIN_USER"));
-		BDDMockito.when(mockedExternalServiceAuthenticator.authenticate(eq(username), eq(password))).
-				thenReturn(authenticationWithToken);
+		AuthenticationWithToken authenticationWithToken = mockedExternalServiceAuthenticator.authenticate(username, password);
+
+		Assert.assertTrue(authenticationWithToken.isAuthenticated());
+		Assert.assertEquals(authenticationWithToken.getAuthorities(),
+				AuthorityUtils.commaSeparatedStringToAuthorityList(SecurityRoles.ROLE_USER));
 
 		ValidatableResponse validatableResponse = given().header(X_AUTH_USERNAME, username).
 				header(X_AUTH_PASSWORD, password).

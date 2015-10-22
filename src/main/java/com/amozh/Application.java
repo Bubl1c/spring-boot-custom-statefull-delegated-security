@@ -12,6 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 
 @Configuration
 @EnableWebMvc
+@ComponentScan
 @EnableAutoConfiguration
 @EnableConfigurationProperties  //TODO: Remove if unused.
 public class Application {

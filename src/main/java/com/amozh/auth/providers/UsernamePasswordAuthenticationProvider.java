@@ -1,4 +1,4 @@
-package com.amozh.auth.user;
+package com.amozh.auth.providers;
 
 import com.amozh.auth.AuthenticationWithToken;
 import com.amozh.auth.TokenService;

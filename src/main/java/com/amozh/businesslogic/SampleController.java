@@ -17,13 +17,13 @@ public class SampleController implements ApiController{
     @Autowired
     private SampleService sampleService;
 
-    @RequestMapping(value = HELLO_URL, method = RequestMethod.POST)
+    @RequestMapping(value = HELLO_URL, method = RequestMethod.GET)
     @PreAuthorize(SecurityRoles.HAS_AUTHORITY_ROLE_USER)
     public String hello(@CurrentlyLoggedUser DomainUser domainUser) {
         return sampleService.hello(domainUser);
     }
 
-    @RequestMapping(value = WORKER_HELLO_URL, method = RequestMethod.POST)
+    @RequestMapping(value = WORKER_HELLO_URL, method = RequestMethod.GET)
     @PreAuthorize(SecurityRoles.HAS_AUTHORITY_ROLE_WORKER)
     public String workerHello(@CurrentlyLoggedUser DomainUser domainUser) {
         return "Hello, worker " + domainUser.getUsername();

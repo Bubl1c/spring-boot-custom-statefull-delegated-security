@@ -5,7 +5,7 @@ package com.amozh.auth;
  */
 public final class SecurityRoles {
 
-    protected static final String HAS_AUTHORITY_PRE = "hasAuthority('";
+    protected static final String HAS_AUTHORITY_PRE = "hasRole('";
     protected static final String HAS_AUTHORITY_POST = "')";
 
     public static final String ROLE_USER = "ROLE_USER";

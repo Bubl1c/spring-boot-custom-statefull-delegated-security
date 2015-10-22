@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.boot.test.SpringApplicationConfiguration;
@@ -118,6 +119,24 @@ public class ApplicationTests {
 	}
 
 	@Test
+	public void authenticate_withValidUsernameAndPassword_returnsToken() {
+		authenticateByUsernameAndPasswordAndGetToken();
+	}
+
+	@Test(expected = AuthenticationException.class)
+	public void authenticate_withInvalidUsernameOrPassword_returnsUnauthorized() {
+		String username = "user";
+		String password = "InvalidPassword";
+
+		BDDMockito.when(mockedExternalServiceAuthenticator.authenticate(anyString(), anyString())).
+				thenThrow(new BadCredentialsException("Invalid Credentials"));
+
+		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
+				when().post(ApiController.AUTHENTICATE_URL).
+				then().statusCode(HttpStatus.UNAUTHORIZED.value());
+	}
+
+	@Test
 	public void helloEndpoint_unauthorized() {
 		when().get("/hello").
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
@@ -133,29 +152,11 @@ public class ApplicationTests {
 	}
 
 	@Test
-	public void helloEndpoint_withValidCredentials_ok() {
+	public void helloEndpoint_withValidCredentials_noAuthentication_unauthorized() {
 		String username = "user";
 		String password = "password";
 		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
 				when().get(ApiController.HELLO_URL).
-				then().statusCode(HttpStatus.OK.value());
-	}
-
-	@Test
-	public void authenticate_withValidUsernameAndPassword_returnsToken() {
-		authenticateByUsernameAndPasswordAndGetToken();
-	}
-
-	@Test
-	public void authenticate_withInvalidUsernameOrPassword_returnsUnauthorized() {
-		String username = "user";
-		String password = "InvalidPassword";
-
-		BDDMockito.when(mockedExternalServiceAuthenticator.authenticate(anyString(), anyString())).
-				thenThrow(new BadCredentialsException("Invalid Credentials"));
-
-		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
-				when().post(ApiController.AUTHENTICATE_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
 	}
 

@@ -23,10 +23,10 @@ public class SampleController implements ApiController{
         return sampleService.hello(domainUser);
     }
 
-    @RequestMapping(value = WORKER_HELLO_URL, method = RequestMethod.GET)
-    @PreAuthorize(SecurityRoles.HAS_AUTHORITY_ROLE_WORKER)
-    public String workerHello(@CurrentlyLoggedUser DomainUser domainUser) {
-        return "Hello, worker " + domainUser.getUsername();
+    @RequestMapping(value = MANAGER_HELLO_URL, method = RequestMethod.GET)
+    @PreAuthorize(SecurityRoles.HAS_AUTHORITY_ROLE_MANAGER)
+    public String managerHello(@CurrentlyLoggedUser DomainUser domainUser) {
+        return "Hello, manager " + domainUser.getUsername();
     }
 
     @RequestMapping(value = FREE_URL, method = RequestMethod.GET)

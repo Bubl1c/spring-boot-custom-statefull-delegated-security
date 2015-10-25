@@ -1,8 +1,5 @@
 package com.amozh;
 
-import com.amozh.auth.AuthenticationWithToken;
-import com.amozh.auth.DomainUser;
-import com.amozh.auth.SecurityRoles;
 import com.amozh.businesslogic.ApiController;
 import com.amozh.external.ExternalServiceAuthenticator;
 import com.amozh.businesslogic.SampleService;
@@ -14,7 +11,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.BDDMockito;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.IntegrationTest;
@@ -24,16 +20,12 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import javax.validation.constraints.AssertTrue;
-
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
-import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -120,11 +112,13 @@ public class ApplicationTests {
 
 	@Test
 	public void authenticate_withValidUsernameAndPassword_returnsToken() {
-		authenticateByUsernameAndPasswordAndGetToken();
+		String token = TestingAuthenticationProvider.authenticateUser();
+		Assert.assertNotNull(token);
+		Assert.assertNotEquals(token, "");
 	}
 
 	@Test(expected = AuthenticationException.class)
-	public void authenticate_withInvalidUsernameOrPassword_returnsUnauthorized() {
+	public void authenticate_withInvalidUsernameOrPassword_AuthenticationException() {
 		String username = "user";
 		String password = "InvalidPassword";
 
@@ -137,17 +131,8 @@ public class ApplicationTests {
 	}
 
 	@Test
-	public void helloEndpoint_unauthorized() {
-		when().get("/hello").
-				then().statusCode(HttpStatus.UNAUTHORIZED.value());
-	}
-
-	@Test
-	public void helloEndpoint_withInvalidCredentials_unauthorized() {
-		String username = "user";
-		String password = "InvalidPassword";
-		given().header(X_AUTH_USERNAME, username).header(X_AUTH_PASSWORD, password).
-				when().get(ApiController.HELLO_URL).
+	public void hello_withoutToken_unauthorized() {
+		when().get(ApiController.HELLO_URL).
 				then().statusCode(HttpStatus.UNAUTHORIZED.value());
 	}
 
@@ -161,45 +146,48 @@ public class ApplicationTests {
 	}
 
 	@Test
-	public void hello_withoutToken_unauthorized() {
-		when().get(ApiController.HELLO_URL).
-				then().statusCode(HttpStatus.UNAUTHORIZED.value());
-	}
-
-	@Test
 	public void hello_InvalidToken_unathorized() {
-		given().header(X_AUTH_TOKEN, "InvalidToken").
-				when().get(ApiController.HELLO_URL).
-				then().statusCode(HttpStatus.UNAUTHORIZED.value());
+		getWithToken("InvalidToken", ApiController.HELLO_URL).statusCode(HttpStatus.UNAUTHORIZED.value());
 	}
 
 	@Test
 	public void hello_ValidToken_returnsData() {
-		String generatedToken = authenticateByUsernameAndPasswordAndGetToken();
-
-		given().header(X_AUTH_TOKEN, generatedToken).
-				when().get(ApiController.HELLO_URL).
-				then().statusCode(HttpStatus.OK.value());
+		String generatedToken = TestingAuthenticationProvider.authenticateUser();
+		getWithToken(generatedToken, ApiController.HELLO_URL).statusCode(HttpStatus.OK.value());
 	}
 
-	private String authenticateByUsernameAndPasswordAndGetToken() {
-		String username = "user";
-		String password = "password";
 
-		AuthenticationWithToken authenticationWithToken = mockedExternalServiceAuthenticator.authenticate(username, password);
+	/* Authorization tests */
 
-		Assert.assertTrue(authenticationWithToken.isAuthenticated());
-		Assert.assertEquals(authenticationWithToken.getAuthorities(),
-				AuthorityUtils.commaSeparatedStringToAuthorityList(SecurityRoles.ROLE_USER));
+	@Test
+	public void userAllowed_user_ok(){
+		String token = TestingAuthenticationProvider.authenticateUser();
+		getWithToken(token, ApiController.HELLO_URL).statusCode(HttpStatus.OK.value());
+	}
 
-		ValidatableResponse validatableResponse = given().header(X_AUTH_USERNAME, username).
-				header(X_AUTH_PASSWORD, password).
-				when().post(ApiController.AUTHENTICATE_URL).
-				then().statusCode(HttpStatus.OK.value());
-		String generatedToken = authenticationWithToken.getToken();
-		validatableResponse.body("token", equalTo(generatedToken));
+	@Test
+	public void userAllowed_manager_unauthorized(){
+		String token = TestingAuthenticationProvider.authenticateManager();
+		getWithToken(token, ApiController.HELLO_URL).statusCode(HttpStatus.FORBIDDEN.value());
+	}
 
-		return generatedToken;
+	@Test
+	public void managerAllowed_manager_ok(){
+		String token = TestingAuthenticationProvider.authenticateManager();
+		getWithToken(token, ApiController.MANAGER_HELLO_URL).statusCode(HttpStatus.OK.value());
+	}
+
+	@Test
+	public void managerAllowed_user_unauthorized(){
+		String token = TestingAuthenticationProvider.authenticateUser();
+		getWithToken(token, ApiController.MANAGER_HELLO_URL).statusCode(HttpStatus.UNAUTHORIZED.value());
+	}
+
+	/* Authorization tests END */
+
+	public ValidatableResponse getWithToken(String token, String path){
+		return given().header(X_AUTH_TOKEN, token).
+				when().get(path).then();
 	}
 
 }

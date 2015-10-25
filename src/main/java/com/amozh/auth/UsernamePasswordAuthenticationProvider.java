@@ -1,14 +1,13 @@
-package com.amozh.auth.providers;
+package com.amozh.auth;
 
-import com.amozh.auth.AuthenticationWithToken;
-import com.amozh.auth.TokenService;
 import com.amozh.external.ExternalServiceAuthenticator;
-import com.google.common.base.Optional;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+
+import java.util.Optional;
 
 /**
  * Created by Andrii on 19.10.2015.

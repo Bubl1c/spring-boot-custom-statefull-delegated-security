@@ -1,15 +1,17 @@
 package com.amozh.auth;
 
-import com.amozh.auth.providers.WorkerTokenAuthenticationProvider;
-import com.amozh.auth.filters.WorkerAuthenticationFilter;
-import com.amozh.auth.filters.AuthenticationFilter;
-import com.amozh.auth.providers.UsernamePasswordAuthenticationProvider;
+import com.amozh.auth.manager.ManagerAuthenticationProvider;
 import com.amozh.businesslogic.ApiController;
 import com.amozh.external.ExternalServiceAuthenticator;
 import com.amozh.external.SomeExternalServiceAuthenticator;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericToStringSerializer;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -32,8 +34,6 @@ import javax.servlet.http.HttpServletResponse;
 @EnableScheduling
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-    @Value("${backend.admin.role}")
-    private String backendAdminRole;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -47,8 +47,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 anonymous().disable().
                 exceptionHandling().authenticationEntryPoint(unauthorizedEntryPoint());
 
-        http.addFilterBefore(new AuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class).
-                addFilterBefore(new WorkerAuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class);
+        http.addFilterBefore(new AuthenticationFilter(authenticationManager()), BasicAuthenticationFilter.class);
     }
 
     @Override
@@ -58,8 +57,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.authenticationProvider(domainUsernamePasswordAuthenticationProvider()).
-                authenticationProvider(backendAdminUsernamePasswordAuthenticationProvider()).
+        auth.authenticationProvider(usernamePasswordAuthenticationProvider()).
+                authenticationProvider(managerAuthenticationProvider()).
                 authenticationProvider(tokenAuthenticationProvider());
     }
 
@@ -74,13 +73,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     @Bean
-    public AuthenticationProvider domainUsernamePasswordAuthenticationProvider() {
+    public AuthenticationProvider usernamePasswordAuthenticationProvider() {
         return new UsernamePasswordAuthenticationProvider(tokenService(), someExternalServiceAuthenticator());
     }
 
     @Bean
-    public AuthenticationProvider backendAdminUsernamePasswordAuthenticationProvider() {
-        return new WorkerTokenAuthenticationProvider();
+    public AuthenticationProvider managerAuthenticationProvider() {
+        return new ManagerAuthenticationProvider(tokenService());
     }
 
     @Bean
@@ -91,5 +90,25 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public AuthenticationEntryPoint unauthorizedEntryPoint() {
         return (request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+    }
+
+    @Bean
+    JedisConnectionFactory jedisConnectionFactory() {
+        return new JedisConnectionFactory();
+    }
+
+    @Bean
+    RedisTemplate<String, AuthenticatedUser> redisTemplate() {
+        final RedisTemplate<String, AuthenticatedUser> template = new RedisTemplate<>();
+        template.setConnectionFactory(jedisConnectionFactory());
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new GenericToStringSerializer<>(AuthenticatedUser.class));
+        template.setValueSerializer(valueSerializer());
+        return template;
+    }
+
+    @Bean
+    public RedisSerializer<AuthenticatedUser> valueSerializer() {
+        return new JacksonJsonRedisSerializer<>(AuthenticatedUser.class);
     }
 }

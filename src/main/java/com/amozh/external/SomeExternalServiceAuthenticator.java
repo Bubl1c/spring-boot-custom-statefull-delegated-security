@@ -11,12 +11,6 @@ import org.springframework.security.core.authority.AuthorityUtils;
  */
 public class SomeExternalServiceAuthenticator implements ExternalServiceAuthenticator {
 
-    TokenService tokenService;
-
-    public SomeExternalServiceAuthenticator() {
-        this.tokenService = new TokenService();
-    }
-
     @Override
     public AuthenticationWithToken authenticate(String username, String password) {
 
@@ -42,7 +36,7 @@ public class SomeExternalServiceAuthenticator implements ExternalServiceAuthenti
                             null,
                             AuthorityUtils.commaSeparatedStringToAuthorityList(SecurityRoles.ROLE_USER.toString()));
 
-        String newToken = /*tokenService.generateNewToken()*/ username + password;
+        String newToken = username + password;
         authenticationWithToken.setToken(newToken);
 
         return authenticationWithToken;

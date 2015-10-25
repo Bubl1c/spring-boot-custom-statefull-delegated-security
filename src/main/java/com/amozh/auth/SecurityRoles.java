@@ -11,6 +11,6 @@ public final class SecurityRoles {
     public static final String ROLE_USER = "ROLE_USER";
     public static final String HAS_AUTHORITY_ROLE_USER = HAS_AUTHORITY_PRE + ROLE_USER + HAS_AUTHORITY_POST;
 
-    public static final String ROLE_WORKER = "ROLE_WORKER";
-    public static final String HAS_AUTHORITY_ROLE_WORKER = HAS_AUTHORITY_PRE + ROLE_WORKER + HAS_AUTHORITY_POST;
+    public static final String ROLE_MANAGER = "ROLE_MANAGER";
+    public static final String HAS_AUTHORITY_ROLE_MANAGER = HAS_AUTHORITY_PRE + ROLE_MANAGER + HAS_AUTHORITY_POST;
 }

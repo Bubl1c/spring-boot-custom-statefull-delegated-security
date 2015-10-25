@@ -11,5 +11,6 @@ public interface ApiController {
     String HELLO_URL = API_PATH + "/hello";
 
     //Management TODO: change here and in filter to "/manage/*" to unify management paths
-    String WORKER_HELLO_URL = "/worker/hello";
+    String MANAGER_RESOURCE_PATTERN = "/manager";
+    String MANAGER_HELLO_URL = "/manager/hello";
 }

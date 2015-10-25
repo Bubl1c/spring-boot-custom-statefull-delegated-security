@@ -1,22 +1,19 @@
-package com.amozh.auth.filters;
+package com.amozh.auth;
 
-import com.amozh.auth.AuthHeaders;
-import com.amozh.auth.TokenResponse;
+import com.amozh.auth.manager.ManagerAuthenticationWithToken;
 import com.amozh.businesslogic.ApiController;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Optional;
-import com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.InternalAuthenticationServiceException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.authentication.encoding.MessageDigestPasswordEncoder;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.GenericFilterBean;
 import org.springframework.web.util.UrlPathHelper;
 
@@ -24,6 +21,7 @@ import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Optional;
 
 /**
  * Created by Andrii on 18.10.2015.
@@ -39,31 +37,37 @@ public class AuthenticationFilter extends GenericFilterBean {
         this.authenticationManager = authenticationManager;
     }
 
+    private static final String MANAGER_ENDPOINT_URL_PATTERN = "/manager";
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        HttpServletRequest httpRequest = asHttp(request);
-        HttpServletResponse httpResponse = asHttp(response);
+        HttpServletRequest httpRequest = AuthUtils.asHttp(request);
+        HttpServletResponse httpResponse = AuthUtils.asHttp(response);
 
-        Optional<String> username = Optional.fromNullable(httpRequest.getHeader(AuthHeaders.USERNAME));
-        Optional<String> password = Optional.fromNullable(httpRequest.getHeader(AuthHeaders.PASSWORD));
-        Optional<String> token = Optional.fromNullable(httpRequest.getHeader(AuthHeaders.TOKEN));
+        Optional<String> username = Optional.ofNullable(httpRequest.getHeader(AuthHeaders.USERNAME));
+        Optional<String> password = Optional.ofNullable(httpRequest.getHeader(AuthHeaders.PASSWORD));
+        Optional<String> token = Optional.ofNullable(httpRequest.getHeader(AuthHeaders.TOKEN));
 
         String resourcePath = new UrlPathHelper().getPathWithinApplication(httpRequest);
 
         try {
-            if (postToAuthenticate(httpRequest, resourcePath)) {
-                logger.debug("Trying to authenticate user {} by "+AuthHeaders.USERNAME+" method", username);
+            if (AuthUtils.isAuthenticationCall(httpRequest, resourcePath)) {
+                logger.debug("Trying to authenticate user {" + username + "} by "+AuthHeaders.USERNAME+" method");
                 processUsernamePasswordAuthentication(httpResponse, username, password);
                 return;
             }
 
-            if (token.isPresent()) {
-                logger.debug("Trying to authenticate user by "+AuthHeaders.TOKEN+" method. Token: {}", token);
+            if (AuthUtils.isManagerResourceCall(resourcePath)) {
+                logger.debug("Trying to authenticate manager by "+AuthHeaders.TOKEN+" method. Token: {" + token + "}");
+                processManagerAuthentication(token);
+            }
+            else if (token.isPresent()) {
+                logger.debug("Trying to authenticate " + AuthHeaders.TOKEN + ": {" + token + "}");
                 processTokenAuthentication(token);
             }
 
             logger.debug("AuthenticationFilter is passing request down the filter chain");
-            addSessionContextToLogging();
+//            addSessionContextToLogging(); Uncomment to use HTTPS
             chain.doFilter(request, response);
         } catch (InternalAuthenticationServiceException internalAuthenticationServiceException) {
             SecurityContextHolder.clearContext();
@@ -81,31 +85,22 @@ public class AuthenticationFilter extends GenericFilterBean {
     private void addSessionContextToLogging() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String tokenValue = "EMPTY";
-        if (authentication != null && !Strings.isNullOrEmpty(authentication.getDetails().toString())) {
+        if (authentication != null && !StringUtils.isEmpty(authentication.getDetails().toString())) {
             MessageDigestPasswordEncoder encoder = new MessageDigestPasswordEncoder("SHA-1");
             tokenValue = encoder.encodePassword(authentication.getDetails().toString(), "not_so_random_salt");
         }
         MDC.put(TOKEN_SESSION_KEY, tokenValue);
 
         String userValue = "EMPTY";
-        if (authentication != null && !Strings.isNullOrEmpty(authentication.getPrincipal().toString())) {
+        if (authentication != null && !StringUtils.isEmpty(authentication.getPrincipal().toString())) {
             userValue = authentication.getPrincipal().toString();
         }
         MDC.put(USER_SESSION_KEY, userValue);
     }
 
-    private HttpServletRequest asHttp(ServletRequest request) {
-        return (HttpServletRequest) request;
-    }
-
-    private HttpServletResponse asHttp(ServletResponse response) {
-        return (HttpServletResponse) response;
-    }
-
-    private boolean postToAuthenticate(HttpServletRequest httpRequest, String resourcePath) {
-        return ApiController.AUTHENTICATE_URL.equalsIgnoreCase(resourcePath) && httpRequest.getMethod().equals("POST");
-    }
-
+    /*
+    * UsernamePasswordAuthentication
+    */
     private void processUsernamePasswordAuthentication(HttpServletResponse httpResponse, Optional<String> username, Optional<String> password) throws IOException {
         Authentication resultOfAuthentication = tryToAuthenticateWithUsernameAndPassword(username, password);
         SecurityContextHolder.getContext().setAuthentication(resultOfAuthentication);
@@ -121,6 +116,18 @@ public class AuthenticationFilter extends GenericFilterBean {
         return tryToAuthenticate(requestAuthentication);
     }
 
+    /*
+    * ManagerAuthentication
+    */
+    private void processManagerAuthentication(Optional<String> token) {
+        ManagerAuthenticationWithToken managerAuthenticationWithToken = new ManagerAuthenticationWithToken(token, null);
+        Authentication resultOfAuthentication = tryToAuthenticate(managerAuthenticationWithToken);
+        SecurityContextHolder.getContext().setAuthentication(resultOfAuthentication);
+    }
+
+    /*
+    * TokenAuthentication
+    */
     private void processTokenAuthentication(Optional<String> token) {
         Authentication resultOfAuthentication = tryToAuthenticateWithToken(token);
         SecurityContextHolder.getContext().setAuthentication(resultOfAuthentication);
@@ -131,12 +138,33 @@ public class AuthenticationFilter extends GenericFilterBean {
         return tryToAuthenticate(requestAuthentication);
     }
 
+    /**
+     * Common authentication method
+     * <p>
+     * Uses {@link ProviderManager} to decide what {@link AuthenticationProvider} to use
+     * based on the class of {@code requestAuthentication} param
+     * </p>
+     * <p>
+     * Example: if you pass {@link UsernamePasswordAuthenticationToken} as this method param -
+     *          {@link ProviderManager} will use {@link UsernamePasswordAuthenticationProvider#supports(Class)}
+     *          method to check if it supports {@code UsernamePasswordAuthenticationToken} class and if it does then
+     *          {@link UsernamePasswordAuthenticationProvider#authenticate(Authentication)} method will be called.
+     *
+     * <br/><br/>You may find registered authentication providers
+     * in {@link SecurityConfig#configure(AuthenticationManagerBuilder)} configuration metod
+     * <p/>
+     * @param requestAuthentication
+     * @return
+     */
     private Authentication tryToAuthenticate(Authentication requestAuthentication) {
         Authentication responseAuthentication = authenticationManager.authenticate(requestAuthentication);
         if (responseAuthentication == null || !responseAuthentication.isAuthenticated()) {
-            throw new InternalAuthenticationServiceException("Unable to authenticate Domain User for provided credentials");
+            throw new InternalAuthenticationServiceException(
+                    "Unable to authenticate " + requestAuthentication.getClass().getName()
+                            + " for provided principal: " + requestAuthentication.getPrincipal()
+                            + ", credentials: " + requestAuthentication.getCredentials());
         }
-        logger.debug("User successfully authenticated");
+        logger.debug(requestAuthentication.getClass().getName() + " successfully authenticated");
         return responseAuthentication;
     }
 }
